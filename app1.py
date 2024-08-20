@@ -18,9 +18,20 @@ def vector_embedding(api_key):
         st.session_state.embeddings = NVIDIAEmbeddings(api_key=api_key)
         st.session_state.loader = PyPDFDirectoryLoader("./us_census")  # Data Ingestion
         st.session_state.docs = st.session_state.loader.load()  # Document Loading
+        
+        if not st.session_state.docs:
+            st.error("No documents loaded. Please check the directory or files.")
+            return
+
         st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=50)  # Chunk Creation
         st.session_state.final_documents = st.session_state.text_splitter.split_documents(st.session_state.docs[:30])  # Splitting
+        
+        if not st.session_state.final_documents:
+            st.error("No document chunks created. Please check the text splitter settings.")
+            return
+
         st.session_state.vectors = FAISS.from_documents(st.session_state.final_documents, st.session_state.embeddings)  # Vector embeddings
+        st.success("Vector store created successfully!")
 
 st.title("Nvidia NIM Demo")
 
@@ -34,11 +45,10 @@ prompt1 = st.text_input("Enter Your Question From Documents")
 if st.button("Create Vector Store"):
     if api_key:
         vector_embedding(api_key)
-        st.write("Vector Store DB is Ready")
     else:
         st.warning("Please enter your NVIDIA API Key.")
 
-if prompt1 and api_key:
+if prompt1 and api_key and "vectors" in st.session_state:
     llm = ChatNVIDIA(api_key=api_key, model="meta/llama3-70b-instruct")
     prompt = ChatPromptTemplate.from_template(
         """
